@@ -22,8 +22,14 @@ def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-6) 
     Returns:
         An approximation of $f'_i(x_0, \ldots, x_{n-1})$
     """
-    # TODO: Implement for Task 1.1.
-    raise NotImplementedError("Need to implement for Task 1.1")
+    # equation: (f(..., x_i + h, ...) - f(..., x_i - h, ...)) / 2h
+    x_i = vals[arg]
+    h = epsilon
+    x_i_plus_h = x_i + h
+    x_i_minus_h = x_i - h
+    f_plus_h = f(*vals[:arg], x_i_plus_h, *vals[arg + 1 :])
+    f_minus_h = f(*vals[:arg], x_i_minus_h, *vals[arg + 1 :])
+    return (f_plus_h - f_minus_h) / (2 * h)
 
 
 variable_count = 1
@@ -61,8 +67,28 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     Returns:
         Non-constant Variables in topological order starting from the right.
     """
-    # TODO: Implement for Task 1.4.
-    raise NotImplementedError("Need to implement for Task 1.4")
+    visited = set()
+    result = []
+    
+    def visit(var: Variable) -> None:
+        # Skip if already visited or if it's a constant
+        if var.unique_id in visited or var.is_constant():
+            return
+        
+        # Append this before its parents since we want to return list from the right
+        visited.add(var.unique_id)
+        
+        # Visit all parents (inputs)
+        for parent in var.parents:
+            visit(parent)
+
+        result.append(var)
+    
+    # Start DFS from the rightmost variable
+    visit(variable)
+    
+    # Return in reverse order (from right to left)
+    return reversed(result)
 
 
 def backpropagate(variable: Variable, deriv: Any) -> None:
@@ -76,8 +102,32 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
 
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
-    # TODO: Implement for Task 1.4.
-    raise NotImplementedError("Need to implement for Task 1.4")
+    # Get variables in topological order
+    sorted_variables = topological_sort(variable)
+    
+    # Dictionary to store derivatives for each variable
+    derivatives = {}
+    derivatives[variable.unique_id] = deriv
+    
+    # Process each variable in reverse topological order
+    for var in sorted_variables:
+        # Skip if this variable doesn't have a derivative yet
+        if var.unique_id not in derivatives:
+            continue
+            
+        current_deriv = derivatives[var.unique_id]
+        
+        # If this is a leaf node, accumulate the derivative
+        if var.is_leaf():
+            var.accumulate_derivative(current_deriv)
+        
+        # Propagate the derivative to parents using chain rule
+        if not var.is_leaf():
+            for parent_var, parent_deriv in var.chain_rule(current_deriv):
+                parent_id = parent_var.unique_id
+                if parent_id not in derivatives:
+                    derivatives[parent_id] = 0.0
+                derivatives[parent_id] += parent_deriv
 
 
 @dataclass
